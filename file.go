@@ -13,7 +13,6 @@ import (
 
 var (
 	DefaultStructTag = "file"
-	ErrInvalidStruct = errors.New("invalid struct specified")
 	ErrPathNotExist  = errors.New("path is not exist")
 )
 
@@ -37,6 +36,10 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 		if v, ok := c.opts.Context.Value(pathKey{}).(string); ok {
 			path = v
 		}
+	}
+
+	if path == "" {
+		return ErrPathNotExist
 	}
 
 	c.path = path
