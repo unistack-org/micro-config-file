@@ -48,6 +48,12 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 }
 
 func (c *fileConfig) Load(ctx context.Context) error {
+	for _, fn := range c.opts.BeforeLoad {
+		if err := fn(ctx, c); err != nil {
+			return err
+		}
+	}
+
 	fp, err := os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
 	if err != nil {
 		return ErrPathNotExist
@@ -59,10 +65,32 @@ func (c *fileConfig) Load(ctx context.Context) error {
 		return err
 	}
 
-	return c.opts.Codec.Unmarshal(buf, c.opts.Struct)
+	if err = c.opts.Codec.Unmarshal(buf, c.opts.Struct); err != nil {
+		return err
+	}
+
+	for _, fn := range c.opts.AfterLoad {
+		if err := fn(ctx, c); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *fileConfig) Save(ctx context.Context) error {
+	for _, fn := range c.opts.BeforeSave {
+		if err := fn(ctx, c); err != nil {
+			return err
+		}
+	}
+
+	for _, fn := range c.opts.AfterSave {
+		if err := fn(ctx, c); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
