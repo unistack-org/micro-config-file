@@ -49,28 +49,28 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 
 func (c *fileConfig) Load(ctx context.Context) error {
 	for _, fn := range c.opts.BeforeLoad {
-		if err := fn(ctx, c); err != nil {
+		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
 		}
 	}
 
 	fp, err := os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
-	if err != nil {
+	if err != nil && !c.opts.AllowFail {
 		return ErrPathNotExist
-	}
-	defer fp.Close()
-
-	buf, err := ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
-	if err != nil {
-		return err
-	}
-
-	if err = c.opts.Codec.Unmarshal(buf, c.opts.Struct); err != nil {
-		return err
+	} else if err == nil {
+		defer fp.Close()
+		var buf []byte
+		buf, err = ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
+		if err == nil {
+			err = c.opts.Codec.Unmarshal(buf, c.opts.Struct)
+		}
+		if err != nil && !c.opts.AllowFail {
+			return err
+		}
 	}
 
 	for _, fn := range c.opts.AfterLoad {
-		if err := fn(ctx, c); err != nil {
+		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
 		}
 	}
@@ -80,13 +80,13 @@ func (c *fileConfig) Load(ctx context.Context) error {
 
 func (c *fileConfig) Save(ctx context.Context) error {
 	for _, fn := range c.opts.BeforeSave {
-		if err := fn(ctx, c); err != nil {
+		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
 		}
 	}
 
 	for _, fn := range c.opts.AfterSave {
-		if err := fn(ctx, c); err != nil {
+		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
 		}
 	}
