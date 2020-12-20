@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -57,7 +58,7 @@ func (c *fileConfig) Load(ctx context.Context) error {
 
 	fp, err := os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
 	if err != nil && !c.opts.AllowFail {
-		return ErrPathNotExist
+		return fmt.Errorf("failed to open: %s, error: %w", c.path, ErrPathNotExist)
 	} else if err == nil {
 		defer fp.Close()
 		var buf []byte
