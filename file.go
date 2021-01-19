@@ -11,6 +11,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/unistack-org/micro/v3/codec"
 	"github.com/unistack-org/micro/v3/config"
+	rutil "github.com/unistack-org/micro/v3/util/reflect"
 )
 
 var (
@@ -64,7 +65,7 @@ func (c *fileConfig) Load(ctx context.Context) error {
 		var buf []byte
 		buf, err = ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
 		if err == nil {
-			src, err := config.Zero(c.opts.Struct)
+			src, err := rutil.Zero(c.opts.Struct)
 			if err == nil {
 				err = c.opts.Codec.Unmarshal(buf, src)
 				if err == nil {
