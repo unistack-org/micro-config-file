@@ -1,6 +1,6 @@
 module github.com/unistack-org/micro-config-file/v3
 
-go 1.15
+go 1.16
 
 require (
 	github.com/imdario/mergo v0.3.12

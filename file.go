@@ -94,6 +94,27 @@ func (c *fileConfig) Save(ctx context.Context) error {
 		}
 	}
 
+	buf, err := c.opts.Codec.Marshal(c.opts.Struct)
+	if err == nil {
+		var fp *os.File
+		fp, err = os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
+		if err != nil && c.opts.AllowFail {
+			return nil
+		} else if err != nil && !c.opts.AllowFail {
+			return fmt.Errorf("failed to open: %s, error: %w", c.path, ErrPathNotExist)
+		}
+
+		if _, werr := fp.Write(buf); werr == nil {
+			err = fp.Close()
+		} else {
+			err = werr
+		}
+	}
+
+	if err != nil && !c.opts.AllowFail {
+		return err
+	}
+
 	for _, fn := range c.opts.AfterSave {
 		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
