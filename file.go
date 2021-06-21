@@ -50,7 +50,7 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 	return nil
 }
 
-func (c *fileConfig) Load(ctx context.Context) error {
+func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error {
 	for _, fn := range c.opts.BeforeLoad {
 		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
@@ -69,7 +69,15 @@ func (c *fileConfig) Load(ctx context.Context) error {
 			if err == nil {
 				err = c.opts.Codec.Unmarshal(buf, src)
 				if err == nil {
-					err = mergo.Merge(c.opts.Struct, src, mergo.WithOverride, mergo.WithTypeCheck, mergo.WithAppendSlice)
+					options := config.NewLoadOptions(opts...)
+					mopts := []func(*mergo.Config){mergo.WithTypeCheck}
+					if options.Override {
+						mopts = append(mopts, mergo.WithOverride)
+					}
+					if options.Append {
+						mopts = append(mopts, mergo.WithAppendSlice)
+					}
+					err = mergo.Merge(c.opts.Struct, src, mopts...)
 				}
 			}
 		}
@@ -87,7 +95,7 @@ func (c *fileConfig) Load(ctx context.Context) error {
 	return nil
 }
 
-func (c *fileConfig) Save(ctx context.Context) error {
+func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error {
 	for _, fn := range c.opts.BeforeSave {
 		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
