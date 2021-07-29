@@ -2,7 +2,6 @@ package file
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,7 +15,6 @@ import (
 
 var (
 	DefaultStructTag = "file"
-	ErrPathNotExist  = errors.New("path is not exist")
 )
 
 type fileConfig struct {
@@ -33,19 +31,15 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 		o(&c.opts)
 	}
 
-	path := ""
-
 	if c.opts.Context != nil {
 		if v, ok := c.opts.Context.Value(pathKey{}).(string); ok {
-			path = v
+			c.path = v
 		}
 	}
 
-	if path == "" {
-		return ErrPathNotExist
+	if c.path == "" {
+		return fmt.Errorf("file path not exists: %v", c.path)
 	}
-
-	c.path = path
 
 	return nil
 }
@@ -59,7 +53,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 
 	fp, err := os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
 	if err != nil && !c.opts.AllowFail {
-		return fmt.Errorf("failed to open: %s, error: %w", c.path, ErrPathNotExist)
+		return fmt.Errorf("failed to open: %s, error: %w", c.path, err)
 	} else if err == nil {
 		defer fp.Close()
 		var buf []byte
@@ -109,7 +103,7 @@ func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error 
 		if err != nil && c.opts.AllowFail {
 			return nil
 		} else if err != nil && !c.opts.AllowFail {
-			return fmt.Errorf("failed to open: %s, error: %w", c.path, ErrPathNotExist)
+			return fmt.Errorf("failed to open: %s, error: %w", c.path, err)
 		}
 
 		if _, werr := fp.Write(buf); werr == nil {
