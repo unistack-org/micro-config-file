@@ -134,6 +134,21 @@ func (c *fileConfig) Name() string {
 	return c.opts.Name
 }
 
+func (c *fileConfig) Watch(ctx context.Context, opts ...config.WatchOption) (config.Watcher, error) {
+	w := &fileWatcher{
+		path:  c.path,
+		opts:  c.opts,
+		wopts: config.NewWatchOptions(opts...),
+		done:  make(chan struct{}),
+		vchan: make(chan map[string]interface{}),
+		echan: make(chan error),
+	}
+
+	go w.run()
+
+	return w, nil
+}
+
 func NewConfig(opts ...config.Option) config.Config {
 	options := config.NewOptions(opts...)
 	if len(options.StructTag) == 0 {
