@@ -13,9 +13,7 @@ import (
 	rutil "github.com/unistack-org/micro/v3/util/reflect"
 )
 
-var (
-	DefaultStructTag = "file"
-)
+var DefaultStructTag = "file"
 
 type fileConfig struct {
 	opts config.Options
@@ -38,89 +36,108 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 	}
 
 	if c.path == "" {
-		return fmt.Errorf("file path not exists: %v", c.path)
+		err := fmt.Errorf("file path not exists: %v", c.path)
+		c.opts.Logger.Error(c.opts.Context, err)
+		if !c.opts.AllowFail {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error {
-	for _, fn := range c.opts.BeforeLoad {
-		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
-			return err
-		}
+	if err := config.DefaultBeforeLoad(ctx, c); err != nil {
+		return err
 	}
 
 	fp, err := os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
-	if err != nil && !c.opts.AllowFail {
-		return fmt.Errorf("failed to open: %s, error: %w", c.path, err)
-	} else if err == nil {
-		defer fp.Close()
-		var buf []byte
-		buf, err = ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
-		if err == nil {
-			src, err := rutil.Zero(c.opts.Struct)
-			if err == nil {
-				err = c.opts.Codec.Unmarshal(buf, src)
-				if err == nil {
-					options := config.NewLoadOptions(opts...)
-					mopts := []func(*mergo.Config){mergo.WithTypeCheck}
-					if options.Override {
-						mopts = append(mopts, mergo.WithOverride)
-					}
-					if options.Append {
-						mopts = append(mopts, mergo.WithAppendSlice)
-					}
-					err = mergo.Merge(c.opts.Struct, src, mopts...)
-				}
-			}
+	if err != nil {
+		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", c.path, err)
+		if !c.opts.AllowFail {
+			return err
 		}
-		if err != nil && !c.opts.AllowFail {
+		return config.DefaultAfterLoad(ctx, c)
+	}
+
+	defer fp.Close()
+
+	buf, err := ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
+	if err != nil {
+		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", c.path, err)
+		if !c.opts.AllowFail {
+			return err
+		}
+		return config.DefaultAfterLoad(ctx, c)
+	}
+
+	src, err := rutil.Zero(c.opts.Struct)
+	if err == nil {
+		err = c.opts.Codec.Unmarshal(buf, src)
+		if err == nil {
+			options := config.NewLoadOptions(opts...)
+			mopts := []func(*mergo.Config){mergo.WithTypeCheck}
+			if options.Override {
+				mopts = append(mopts, mergo.WithOverride)
+			}
+			if options.Append {
+				mopts = append(mopts, mergo.WithAppendSlice)
+			}
+			err = mergo.Merge(c.opts.Struct, src, mopts...)
+		}
+	}
+
+	if err != nil {
+		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", c.path, err)
+		if !c.opts.AllowFail {
 			return err
 		}
 	}
 
-	for _, fn := range c.opts.AfterLoad {
-		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
-			return err
-		}
+	if err := config.DefaultAfterLoad(ctx, c); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error {
-	for _, fn := range c.opts.BeforeSave {
-		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
-			return err
-		}
-	}
-
-	buf, err := c.opts.Codec.Marshal(c.opts.Struct)
-	if err == nil {
-		var fp *os.File
-		fp, err = os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
-		if err != nil && c.opts.AllowFail {
-			return nil
-		} else if err != nil && !c.opts.AllowFail {
-			return fmt.Errorf("failed to open: %s, error: %w", c.path, err)
-		}
-
-		if _, werr := fp.Write(buf); werr == nil {
-			err = fp.Close()
-		} else {
-			err = werr
-		}
-	}
-
-	if err != nil && !c.opts.AllowFail {
+	if err := config.DefaultBeforeSave(ctx, c); err != nil {
 		return err
 	}
 
-	for _, fn := range c.opts.AfterSave {
-		if err := fn(ctx, c); err != nil && !c.opts.AllowFail {
+	buf, err := c.opts.Codec.Marshal(c.opts.Struct)
+	if err != nil {
+		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", c.path, err)
+		if !c.opts.AllowFail {
 			return err
 		}
+		return config.DefaultAfterSave(ctx, c)
+	}
+
+	fp, err := os.OpenFile(c.path, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+	if err != nil {
+		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", c.path, err)
+		if !c.opts.AllowFail {
+			return err
+		}
+		return config.DefaultAfterSave(ctx, c)
+	}
+	defer fp.Close()
+
+	if _, err = fp.Write(buf); err == nil {
+		err = fp.Close()
+	}
+
+	if err != nil {
+		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", c.path, err)
+		if !c.opts.AllowFail {
+			return err
+		}
+	}
+
+	if err := config.DefaultAfterSave(ctx, c); err != nil {
+		return err
 	}
 
 	return nil
