@@ -1,4 +1,4 @@
-module go.unistack.orgmicro-config-file/v3
+module go.unistack.org/micro-config-file/v3
 
 go 1.16
 
