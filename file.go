@@ -51,9 +51,17 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 		return err
 	}
 
-	fp, err := os.OpenFile(c.path, os.O_RDONLY, os.FileMode(0400))
+	path := c.path
+	options := config.NewLoadOptions(opts...)
+	if options.Context != nil {
+		if v, ok := options.Context.Value(pathKey{}).(string); ok && v != "" {
+			path = v
+		}
+	}
+
+	fp, err := os.OpenFile(path, os.O_RDONLY, os.FileMode(0400))
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", c.path, err)
+		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
@@ -64,7 +72,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 
 	buf, err := ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", c.path, err)
+		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
@@ -88,7 +96,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 	}
 
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", c.path, err)
+		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
@@ -106,18 +114,26 @@ func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error 
 		return err
 	}
 
+	path := c.path
+	options := config.NewSaveOptions(opts...)
+	if options.Context != nil {
+		if v, ok := options.Context.Value(pathKey{}).(string); ok && v != "" {
+			path = v
+		}
+	}
+
 	buf, err := c.opts.Codec.Marshal(c.opts.Struct)
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", c.path, err)
+		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
 		return config.DefaultAfterSave(ctx, c)
 	}
 
-	fp, err := os.OpenFile(c.path, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+	fp, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", c.path, err)
+		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
@@ -130,7 +146,7 @@ func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error 
 	}
 
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", c.path, err)
+		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
@@ -152,8 +168,16 @@ func (c *fileConfig) Name() string {
 }
 
 func (c *fileConfig) Watch(ctx context.Context, opts ...config.WatchOption) (config.Watcher, error) {
+	path := c.path
+	options := config.NewWatchOptions(opts...)
+	if options.Context != nil {
+		if v, ok := options.Context.Value(pathKey{}).(string); ok && v != "" {
+			path = v
+		}
+	}
+
 	w := &fileWatcher{
-		path:  c.path,
+		path:  path,
 		opts:  c.opts,
 		wopts: config.NewWatchOptions(opts...),
 		done:  make(chan struct{}),
