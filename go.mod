@@ -4,5 +4,5 @@ go 1.16
 
 require (
 	github.com/imdario/mergo v0.3.12
-	go.unistack.org/micro/v3 v3.9.1
+	go.unistack.org/micro/v3 v3.9.5
 )
