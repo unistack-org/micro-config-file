@@ -25,6 +25,10 @@ func (c *fileConfig) Options() config.Options {
 }
 
 func (c *fileConfig) Init(opts ...config.Option) error {
+	if err := config.DefaultBeforeInit(c.opts.Context, c); err != nil && !c.opts.AllowFail {
+		return err
+	}
+
 	for _, o := range opts {
 		o(&c.opts)
 	}
@@ -37,17 +41,20 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 
 	if c.path == "" {
 		err := fmt.Errorf("file path not exists: %v", c.path)
-		c.opts.Logger.Error(c.opts.Context, err)
 		if !c.opts.AllowFail {
 			return err
 		}
+	}
+
+	if err := config.DefaultAfterInit(c.opts.Context, c); err != nil && !c.opts.AllowFail {
+		return err
 	}
 
 	return nil
 }
 
 func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error {
-	if err := config.DefaultBeforeLoad(ctx, c); err != nil {
+	if err := config.DefaultBeforeLoad(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
 
@@ -61,25 +68,36 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 
 	fp, err := os.OpenFile(path, os.O_RDONLY, os.FileMode(0400))
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", path, err)
 		if !c.opts.AllowFail {
+			return fmt.Errorf("file load path %s error: %w", path, err)
+		}
+		if err = config.DefaultAfterLoad(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
 		}
-		return config.DefaultAfterLoad(ctx, c)
+
+		return nil
 	}
 
 	defer fp.Close()
 
 	buf, err := ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
-		return config.DefaultAfterLoad(ctx, c)
+		if err = config.DefaultAfterLoad(ctx, c); err != nil && !c.opts.AllowFail {
+			return err
+		}
+
+		return nil
 	}
 
-	src, err := rutil.Zero(c.opts.Struct)
+	dst := c.opts.Struct
+	if options.Struct != nil {
+		dst = options.Struct
+	}
+
+	src, err := rutil.Zero(dst)
 	if err == nil {
 		err = c.opts.Codec.Unmarshal(buf, src)
 		if err == nil {
@@ -91,18 +109,15 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 			if options.Append {
 				mopts = append(mopts, mergo.WithAppendSlice)
 			}
-			err = mergo.Merge(c.opts.Struct, src, mopts...)
+			err = mergo.Merge(dst, src, mopts...)
 		}
 	}
 
-	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file load path %s error: %v", path, err)
-		if !c.opts.AllowFail {
-			return err
-		}
+	if err != nil && !c.opts.AllowFail {
+		return err
 	}
 
-	if err := config.DefaultAfterLoad(ctx, c); err != nil {
+	if err := config.DefaultAfterLoad(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
 
@@ -110,7 +125,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 }
 
 func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error {
-	if err := config.DefaultBeforeSave(ctx, c); err != nil {
+	if err := config.DefaultBeforeSave(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
 
@@ -122,22 +137,33 @@ func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error 
 		}
 	}
 
-	buf, err := c.opts.Codec.Marshal(c.opts.Struct)
+	dst := c.opts.Struct
+	if options.Struct != nil {
+		dst = options.Struct
+	}
+
+	buf, err := c.opts.Codec.Marshal(dst)
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
-		return config.DefaultAfterSave(ctx, c)
+		if err = config.DefaultAfterSave(ctx, c); err != nil && !c.opts.AllowFail {
+			return err
+		}
+
+		return nil
 	}
 
 	fp, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
 	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", path, err)
 		if !c.opts.AllowFail {
 			return err
 		}
-		return config.DefaultAfterSave(ctx, c)
+		if err = config.DefaultAfterSave(ctx, c); err != nil && !c.opts.AllowFail {
+			return err
+		}
+
+		return nil
 	}
 	defer fp.Close()
 
@@ -145,14 +171,11 @@ func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error 
 		err = fp.Close()
 	}
 
-	if err != nil {
-		c.opts.Logger.Errorf(c.opts.Context, "file save path %s error: %v", path, err)
-		if !c.opts.AllowFail {
-			return err
-		}
+	if err != nil && !c.opts.AllowFail {
+		return err
 	}
 
-	if err := config.DefaultAfterSave(ctx, c); err != nil {
+	if err := config.DefaultAfterSave(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
 
