@@ -1,7 +1,7 @@
 package file
 
 import (
-	"go.unistack.org/micro/v3/config"
+	"go.unistack.org/micro/v4/config"
 )
 
 type pathKey struct{}
