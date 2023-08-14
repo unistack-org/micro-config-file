@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/imdario/mergo"
 	"go.unistack.org/micro/v4/codec"
 	"go.unistack.org/micro/v4/config"
+	"go.unistack.org/micro/v4/options"
 	rutil "go.unistack.org/micro/v4/util/reflect"
 )
 
@@ -24,7 +24,7 @@ func (c *fileConfig) Options() config.Options {
 	return c.opts
 }
 
-func (c *fileConfig) Init(opts ...config.Option) error {
+func (c *fileConfig) Init(opts ...options.Option) error {
 	if err := config.DefaultBeforeInit(c.opts.Context, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
@@ -53,7 +53,7 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 	return nil
 }
 
-func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error {
+func (c *fileConfig) Load(ctx context.Context, opts ...options.Option) error {
 	if err := config.DefaultBeforeLoad(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
@@ -80,7 +80,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 
 	defer fp.Close()
 
-	buf, err := ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
+	buf, err := io.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return err
@@ -124,7 +124,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 	return nil
 }
 
-func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error {
+func (c *fileConfig) Save(ctx context.Context, opts ...options.Option) error {
 	if err := config.DefaultBeforeSave(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
@@ -190,7 +190,7 @@ func (c *fileConfig) Name() string {
 	return c.opts.Name
 }
 
-func (c *fileConfig) Watch(ctx context.Context, opts ...config.WatchOption) (config.Watcher, error) {
+func (c *fileConfig) Watch(ctx context.Context, opts ...options.Option) (config.Watcher, error) {
 	path := c.path
 	options := config.NewWatchOptions(opts...)
 	if options.Context != nil {
@@ -213,7 +213,7 @@ func (c *fileConfig) Watch(ctx context.Context, opts ...config.WatchOption) (con
 	return w, nil
 }
 
-func NewConfig(opts ...config.Option) config.Config {
+func NewConfig(opts ...options.Option) config.Config {
 	options := config.NewOptions(opts...)
 	if len(options.StructTag) == 0 {
 		options.StructTag = DefaultStructTag

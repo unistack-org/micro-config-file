@@ -1,23 +1,11 @@
 package file
 
 import (
-	"go.unistack.org/micro/v4/config"
+	"go.unistack.org/micro/v4/options"
 )
 
 type pathKey struct{}
 
-func Path(path string) config.Option {
-	return config.SetOption(pathKey{}, path)
-}
-
-func LoadPath(path string) config.LoadOption {
-	return config.SetLoadOption(pathKey{}, path)
-}
-
-func SavePath(path string) config.SaveOption {
-	return config.SetSaveOption(pathKey{}, path)
-}
-
-func WatchPath(path string) config.WatchOption {
-	return config.SetWatchOption(pathKey{}, path)
+func Path(path string) options.Option {
+	return options.ContextOption(pathKey{}, path)
 }
