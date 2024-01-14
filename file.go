@@ -54,6 +54,10 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 }
 
 func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error {
+	if c.opts.SkipLoad != nil && c.opts.SkipLoad(ctx, c) {
+		return nil
+	}
+
 	if err := config.DefaultBeforeLoad(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
@@ -125,6 +129,10 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 }
 
 func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error {
+	if c.opts.SkipSave != nil && c.opts.SkipSave(ctx, c) {
+		return nil
+	}
+
 	if err := config.DefaultBeforeSave(ctx, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
