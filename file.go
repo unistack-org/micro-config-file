@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 	"go.unistack.org/micro/v3/codec"
 	"go.unistack.org/micro/v3/config"
 	rutil "go.unistack.org/micro/v3/util/reflect"
@@ -70,7 +69,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 		}
 	}
 
-	fp, err := os.OpenFile(path, os.O_RDONLY, os.FileMode(0400))
+	fp, err := os.OpenFile(path, os.O_RDONLY, os.FileMode(0o400))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return fmt.Errorf("file load path %s error: %w", path, err)
@@ -84,7 +83,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 
 	defer fp.Close()
 
-	buf, err := ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
+	buf, err := io.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return err
@@ -162,7 +161,7 @@ func (c *fileConfig) Save(ctx context.Context, opts ...config.SaveOption) error 
 		return nil
 	}
 
-	fp, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+	fp, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, os.FileMode(0o600))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return err
