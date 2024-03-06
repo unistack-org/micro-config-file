@@ -1,4 +1,4 @@
-package file // import "go.unistack.org/micro-config-file/v4"
+package file
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 	"go.unistack.org/micro/v4/codec"
 	"go.unistack.org/micro/v4/config"
 	"go.unistack.org/micro/v4/options"
@@ -70,7 +70,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...options.Option) error {
 		}
 	}
 
-	fp, err := os.OpenFile(path, os.O_RDONLY, os.FileMode(0400))
+	fp, err := os.OpenFile(path, os.O_RDONLY, os.FileMode(0o400))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return fmt.Errorf("file load path %s error: %w", path, err)
@@ -162,7 +162,7 @@ func (c *fileConfig) Save(ctx context.Context, opts ...options.Option) error {
 		return nil
 	}
 
-	fp, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, os.FileMode(0600))
+	fp, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, os.FileMode(0o600))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return err
