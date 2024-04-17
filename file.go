@@ -5,18 +5,22 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 
 	"dario.cat/mergo"
 	"go.unistack.org/micro/v3/codec"
 	"go.unistack.org/micro/v3/config"
 	rutil "go.unistack.org/micro/v3/util/reflect"
+	"golang.org/x/text/transform"
 )
 
 var DefaultStructTag = "file"
 
 type fileConfig struct {
-	opts config.Options
-	path string
+	opts        config.Options
+	path        string
+	reader      io.Reader
+	transformer transform.Transformer
 }
 
 func (c *fileConfig) Options() config.Options {
@@ -36,10 +40,20 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 		if v, ok := c.opts.Context.Value(pathKey{}).(string); ok {
 			c.path = v
 		}
+		if v, ok := c.opts.Context.Value(transformerKey{}).(transform.Transformer); ok {
+			c.transformer = v
+		}
+		if v, ok := c.opts.Context.Value(readerKey{}).(io.Reader); ok {
+			c.reader = v
+		}
 	}
 
-	if c.path == "" {
-		err := fmt.Errorf("file path not exists: %v", c.path)
+	if c.opts.Codec == nil {
+		return fmt.Errorf("Codec must be specified")
+	}
+
+	if c.path == "" && c.reader == nil {
+		err := fmt.Errorf("Path or Reader must be specified")
 		if !c.opts.AllowFail {
 			return err
 		}
@@ -69,10 +83,24 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 		}
 	}
 
-	fp, err := os.OpenFile(path, os.O_RDONLY, os.FileMode(0o400))
+	var fp io.Reader
+	var err error
+
+	if c.path != "" {
+		fp, err = os.OpenFile(path, os.O_RDONLY, os.FileMode(0o400))
+	} else if c.reader != nil {
+		fp = c.reader
+	} else {
+		err = fmt.Errorf("Path or Reader must be specified")
+	}
+
 	if err != nil {
 		if !c.opts.AllowFail {
-			return fmt.Errorf("file load path %s error: %w", path, err)
+			if c.path != "" {
+				return fmt.Errorf("file load path %s error: %w", path, err)
+			} else {
+				return fmt.Errorf("file load error: %w", err)
+			}
 		}
 		if err = config.DefaultAfterLoad(ctx, c); err != nil && !c.opts.AllowFail {
 			return err
@@ -81,9 +109,18 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 		return nil
 	}
 
-	defer fp.Close()
+	if fpc, ok := fp.(io.Closer); ok {
+		defer fpc.Close()
+	}
 
-	buf, err := io.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
+	var r io.Reader
+	if c.transformer != nil {
+		r = transform.NewReader(fp, c.transformer)
+	} else {
+		r = fp
+	}
+
+	buf, err := io.ReadAll(io.LimitReader(r, int64(codec.DefaultMaxMsgSize)))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return err
@@ -226,4 +263,83 @@ func NewConfig(opts ...config.Option) config.Config {
 		options.StructTag = DefaultStructTag
 	}
 	return &fileConfig{opts: options}
+}
+
+type EnvTransformer struct {
+	maxMatchSize    int
+	Regexp          *regexp.Regexp
+	TransformerFunc TransformerFunc
+	overflow        []byte
+}
+
+var _ transform.Transformer = (*EnvTransformer)(nil)
+
+// Transform implements golang.org/x/text/transform#Transformer
+func (t *EnvTransformer) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err error) {
+	t.maxMatchSize = 1024
+	var n int
+	// copy any overflow from the last call
+	if len(t.overflow) > 0 {
+		n, err = fullcopy(dst, t.overflow)
+		nDst += n
+		if err != nil {
+			t.overflow = t.overflow[n:]
+			return
+		}
+		t.overflow = nil
+	}
+	for _, index := range t.Regexp.FindAllSubmatchIndex(src, -1) {
+		// copy everything up to the match
+		n, err = fullcopy(dst[nDst:], src[nSrc:index[0]])
+		nSrc += n
+		nDst += n
+		if err != nil {
+			return
+		}
+		// skip the match if it ends at the end the src buffer.
+		// it could potentially match more
+		if index[1] == len(src) && !atEOF {
+			break
+		}
+		// copy the replacement
+		rep := t.TransformerFunc(src, index)
+		n, err = fullcopy(dst[nDst:], rep)
+		nDst += n
+		nSrc = index[1]
+		if err != nil {
+			t.overflow = rep[n:]
+			return
+		}
+	}
+	// if we're at the end, tack on any remaining bytes
+	if atEOF {
+		n, err = fullcopy(dst[nDst:], src[nSrc:])
+		nDst += n
+		nSrc += n
+		return
+	}
+	// skip any bytes which exceede the max match size
+	if skip := len(src[nSrc:]) - t.maxMatchSize; skip > 0 {
+		n, err = fullcopy(dst[nDst:], src[nSrc:nSrc+skip])
+		nSrc += n
+		nDst += n
+		if err != nil {
+			return
+		}
+	}
+	err = transform.ErrShortSrc
+	return
+}
+
+// Reset resets the state and allows a Transformer to be reused.
+func (t *EnvTransformer) Reset() {
+	t.overflow = nil
+}
+
+func fullcopy(dst, src []byte) (n int, err error) {
+	n = copy(dst, src)
+	if n < len(src) {
+		err = transform.ErrShortDst
+	}
+	return
 }
