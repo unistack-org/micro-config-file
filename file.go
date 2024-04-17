@@ -81,10 +81,19 @@ func (c *fileConfig) Load(ctx context.Context, opts ...options.Option) error {
 	}
 
 	path := c.path
+	transformer := c.transformer
+	reader := c.reader
+
 	options := config.NewLoadOptions(opts...)
 	if options.Context != nil {
 		if v, ok := options.Context.Value(pathKey{}).(string); ok && v != "" {
 			path = v
+		}
+		if v, ok := c.opts.Context.Value(transformerKey{}).(transform.Transformer); ok {
+			transformer = v
+		}
+		if v, ok := c.opts.Context.Value(readerKey{}).(io.Reader); ok {
+			reader = v
 		}
 	}
 
@@ -94,7 +103,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...options.Option) error {
 	if c.path != "" {
 		fp, err = os.OpenFile(path, os.O_RDONLY, os.FileMode(0o400))
 	} else if c.reader != nil {
-		fp = c.reader
+		fp = reader
 	} else {
 		err = fmt.Errorf("Path or Reader must be specified")
 	}
@@ -119,7 +128,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...options.Option) error {
 	}
 
 	var r io.Reader
-	if c.transformer != nil {
+	if transformer != nil {
 		r = transform.NewReader(fp, c.transformer)
 	} else {
 		r = fp
