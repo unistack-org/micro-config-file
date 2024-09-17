@@ -7,7 +7,6 @@ import (
 	"os"
 	"reflect"
 
-	"go.unistack.org/micro/v3/codec"
 	"go.unistack.org/micro/v3/config"
 	"go.unistack.org/micro/v3/util/jitter"
 	rutil "go.unistack.org/micro/v3/util/reflect"
@@ -44,7 +43,7 @@ func (w *fileWatcher) run() {
 					return
 				}
 				var buf []byte
-				buf, err = ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
+				buf, err = ioutil.ReadAll(io.LimitReader(fp, MaxFileSize))
 				if err == nil {
 					err = w.opts.Codec.Unmarshal(buf, dst)
 				}

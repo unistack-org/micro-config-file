@@ -8,13 +8,15 @@ import (
 	"regexp"
 
 	"dario.cat/mergo"
-	"go.unistack.org/micro/v3/codec"
 	"go.unistack.org/micro/v3/config"
 	rutil "go.unistack.org/micro/v3/util/reflect"
 	"golang.org/x/text/transform"
 )
 
-var DefaultStructTag = "file"
+var (
+	DefaultStructTag       = "file"
+	MaxFileSize      int64 = 1 * 1024 * 1024
+)
 
 type fileConfig struct {
 	opts        config.Options
@@ -129,7 +131,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 		r = fp
 	}
 
-	buf, err := io.ReadAll(io.LimitReader(r, int64(codec.DefaultMaxMsgSize)))
+	buf, err := io.ReadAll(io.LimitReader(r, MaxFileSize))
 	if err != nil {
 		if !c.opts.AllowFail {
 			return err

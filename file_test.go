@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"os"
 	"testing"
 
@@ -22,20 +21,8 @@ func (*jsoncodec) Unmarshal(buf []byte, v interface{}, opts ...codec.Option) err
 	return json.Unmarshal(buf, v)
 }
 
-func (*jsoncodec) ReadBody(r io.Reader, v interface{}) error {
-	return nil
-}
-
-func (*jsoncodec) ReadHeader(r io.Reader, m *codec.Message, t codec.MessageType) error {
-	return nil
-}
-
 func (*jsoncodec) String() string {
 	return "json"
-}
-
-func (*jsoncodec) Write(w io.Writer, m *codec.Message, v interface{}) error {
-	return nil
 }
 
 func TestLoadReplace(t *testing.T) {
