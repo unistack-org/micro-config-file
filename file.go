@@ -54,13 +54,6 @@ func (c *fileConfig) Init(opts ...config.Option) error {
 		return fmt.Errorf("Codec must be specified")
 	}
 
-	if c.path == "" && c.reader == nil {
-		err := fmt.Errorf("Path or Reader must be specified")
-		if !c.opts.AllowFail {
-			return err
-		}
-	}
-
 	if err := config.DefaultAfterInit(c.opts.Context, c); err != nil && !c.opts.AllowFail {
 		return err
 	}
