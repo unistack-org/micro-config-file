@@ -90,7 +90,7 @@ func (c *fileConfig) Load(ctx context.Context, opts ...config.LoadOption) error 
 	var fp io.Reader
 	var err error
 
-	if c.path != "" {
+	if path != "" {
 		fp, err = os.OpenFile(path, os.O_RDONLY, os.FileMode(0o400))
 	} else if c.reader != nil {
 		fp = reader
