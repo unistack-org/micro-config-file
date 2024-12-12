@@ -3,7 +3,6 @@ package file
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 
@@ -44,7 +43,7 @@ func (w *fileWatcher) run() {
 					return
 				}
 				var buf []byte
-				buf, err = ioutil.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
+				buf, err = io.ReadAll(io.LimitReader(fp, int64(codec.DefaultMaxMsgSize)))
 				if err == nil {
 					err = w.opts.Codec.Unmarshal(buf, dst)
 				}
