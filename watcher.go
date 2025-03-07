@@ -6,9 +6,9 @@ import (
 	"os"
 	"reflect"
 
-	"go.unistack.org/micro/v3/config"
-	"go.unistack.org/micro/v3/util/jitter"
-	rutil "go.unistack.org/micro/v3/util/reflect"
+	"go.unistack.org/micro/v4/config"
+	"go.unistack.org/micro/v4/util/jitter"
+	rutil "go.unistack.org/micro/v4/util/reflect"
 )
 
 type fileWatcher struct {
@@ -37,7 +37,7 @@ func (w *fileWatcher) run() {
 			dst, err := rutil.Zero(src)
 			if err == nil {
 				var fp *os.File
-				if fp, err = os.OpenFile(w.path, os.O_RDONLY, os.FileMode(0400)); err != nil {
+				if fp, err = os.OpenFile(w.path, os.O_RDONLY, os.FileMode(0o400)); err != nil {
 					w.echan <- fmt.Errorf("failed to open: %s, error: %w", w.path, err)
 					return
 				}

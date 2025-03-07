@@ -1,4 +1,4 @@
-package file // import "go.unistack.org/micro-config-file/v3"
+package file
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"regexp"
 
 	"dario.cat/mergo"
-	"go.unistack.org/micro/v3/config"
-	rutil "go.unistack.org/micro/v3/util/reflect"
+	"go.unistack.org/micro/v4/config"
+	rutil "go.unistack.org/micro/v4/util/reflect"
 	"golang.org/x/text/transform"
 )
 
