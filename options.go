@@ -5,7 +5,7 @@ import (
 	"os"
 	"regexp"
 
-	"go.unistack.org/micro/v4/config"
+	"go.unistack.org/micro/v5/config"
 	"golang.org/x/text/transform"
 )
 

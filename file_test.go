@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"go.unistack.org/micro/v4/codec"
-	"go.unistack.org/micro/v4/config"
+	"go.unistack.org/micro/v5/codec"
+	"go.unistack.org/micro/v5/config"
 )
 
 type jsoncodec struct{}
